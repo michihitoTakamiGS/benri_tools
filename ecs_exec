@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# クラスター一覧の取得
+echo "クラスター一覧を取得中..."
+clusters=$(aws ecs list-clusters --output text --query 'clusterArns[*]')
+
+# クラスター選択
+echo "クラスターを選択してください:"
+select cluster in $clusters; do
+  if [ -n "$cluster" ]; then
+    echo "選択されたクラスター: $cluster"
+    break
+  else
+    echo "有効なクラスターを選択してください。"
+  fi
+done
+
+# タスク一覧の取得
+echo "タスク一覧を取得中..."
+tasks=$(aws ecs list-tasks --cluster $cluster --output text --query 'taskArns[*]')
+
+# タスク選択
+echo "タスクを選択してください:"
+select task in $tasks; do
+  if [ -n "$task" ]; then
+    echo "選択されたタスク: $task"
+    break
+  else
+    echo "有効なタスクを選択してください。"
+  fi
+done
+
+# コンテナ一覧の取得
+echo "コンテナ一覧を取得中..."
+containers=$(aws ecs describe-tasks --tasks $task --cluster $cluster --output text --query 'tasks[0].containers[*].name')
+
+# コンテナ選択
+echo "コンテナを選択してください:"
+select container in $containers; do
+  if [ -n "$container" ]; then
+    echo "選択されたコンテナ: $container"
+    break
+  else
+    echo "有効なコンテナを選択してください。"
+  fi
+done
+
+# ECS EXEC の実行
+echo "ECS EXEC を実行中..."
+aws ecs execute-command --cluster $cluster --task $task --container $container --command "/bin/bash" --interactive
