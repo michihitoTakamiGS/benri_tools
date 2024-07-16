@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# MFA ARNの入力
+read -p "MFA ARN を入力してください: " MFA_ARN
+
+# プロファイルの入力
+read -p "使用するAWSプロファイル名を入力してください (デフォルトの場合は空欄): " PROFILE
+
+# トークンコードの入力
+read -p "トークンコードを入力してください: " TOKEN
+
+# プロファイルが空の場合、デフォルトを使用
+if [ -z "$PROFILE" ]; then
+    PROFILE="default"
+fi
+
+echo "AWS CLIコマンドを実行中..."
+
+# AWS CLIコマンドを実行し、結果をJSONとして取得
+JSON_RESULT=$(aws sts get-session-token --serial-number "$MFA_ARN" --token-code "$TOKEN" --profile "$PROFILE")
+
+# コマンドが失敗した場合のエラーハンドリング
+if [ $? -ne 0 ]; then
+    echo "エラー: AWS CLIコマンドの実行に失敗しました。"
+    exit 1
+fi
+
+# JSONから必要な情報を抽出
+ACCESS_KEY_ID=$(echo "$JSON_RESULT" | jq -r '.Credentials.AccessKeyId')
+SECRET_ACCESS_KEY=$(echo "$JSON_RESULT" | jq -r '.Credentials.SecretAccessKey')
+SESSION_TOKEN=$(echo "$JSON_RESULT" | jq -r '.Credentials.SessionToken')
+
+# 環境変数をエクスポート
+export AWS_ACCESS_KEY_ID="$ACCESS_KEY_ID"
+export AWS_SECRET_ACCESS_KEY="$SECRET_ACCESS_KEY"
+export AWS_SESSION_TOKEN="$SESSION_TOKEN"
+
+# 設定された環境変数を表示
+echo "以下をコピーして貼り付けてください"
+echo "export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
+echo "export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
+echo "export AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN"
